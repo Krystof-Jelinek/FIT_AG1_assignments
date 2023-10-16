@@ -45,10 +45,7 @@ class Edge{
   size_t to;
   size_t lenght;
 
-  Edge(size_t t, size_t l){
-    to = t;
-    lenght = l;
-  }
+  Edge(size_t t, size_t l) : to(t), lenght(l) {}
 
 };
 
@@ -60,40 +57,32 @@ class Node{
   size_t added_by_predecessor;
   std::vector<Edge> neighbours;
 
+  Node(size_t i) : index(i), predecessor(ROOT), current_longest_path(0), added_by_predecessor(0) {}
 
-  Node(size_t i){
-    index = i;
-    predecessor = ROOT;
-    current_longest_path = 0;
-    added_by_predecessor = 0;
-  }
 };
 
 class Graf{
   public:
   std::vector<Node> all_nodes;
-  std::vector<int> begin_nodes;
+  std::unordered_set<size_t> begin_nodes;
   size_t longest_path;
   size_t longest_path_node_index;
 
-  Graf(size_t number_of_nodes){
-    longest_path = 0;
-    longest_path_node_index = 0;
+  Graf(size_t number_of_nodes) : longest_path(0), longest_path_node_index(0){
+    all_nodes.reserve(number_of_nodes);
+    begin_nodes.reserve(number_of_nodes);
 
     for(size_t i = 0; i < number_of_nodes;i++){
-      all_nodes.push_back(Node(i));
-      begin_nodes.push_back(int(i));
+      all_nodes.emplace_back(Node(i));
+      begin_nodes.insert(i);
     }
   }
 
   void add_edge(const Path & input){
-    all_nodes[input.from].neighbours.push_back(Edge(input.to,input.length));
+    all_nodes[input.from].neighbours.emplace_back(Edge(input.to,input.length));
     
     //here i wanna remove the input.to node from the possible beginigns of the bfs alrgorith
-    auto itr = std::lower_bound(begin_nodes.begin(),begin_nodes.end(),int(input.to));
-    if((itr != begin_nodes.end()) && ((*itr) == int(input.to))){
-      begin_nodes.erase(itr);
-    }
+    begin_nodes.erase(input.to);
   }
 
 };
@@ -108,37 +97,40 @@ std::vector<Path> longest_track(size_t points, const std::vector<Path>& all_path
     //executing bfs algorithm on the graf
     std::queue<Node> queue;
 
-    for(size_t i = 0; i < graf.begin_nodes.size();i++){
-        Node start =  graf.all_nodes[graf.begin_nodes[i]];
+    for(auto itr = graf.begin_nodes.begin(); itr!= graf.begin_nodes.end();itr++){
+        Node start =  graf.all_nodes[*itr];
 
         queue.push(start);
+    }
 
         while(!queue.empty()){
           Node cur_node = queue.front();
           queue.pop();
 
           for(auto itr = cur_node.neighbours.begin(); itr != cur_node.neighbours.end(); itr++){
-              if(graf.all_nodes[(*itr).to].current_longest_path < (cur_node.current_longest_path + (*itr).lenght)){
-                graf.all_nodes[(*itr).to].current_longest_path = cur_node.current_longest_path + (*itr).lenght;
-                graf.all_nodes[(*itr).to].added_by_predecessor = (*itr).lenght;
+              Node & neigbour = graf.all_nodes[(*itr).to];
+              size_t possible_longest_path = cur_node.current_longest_path + (*itr).lenght;
+
+              if(neigbour.current_longest_path < possible_longest_path){
+                neigbour.current_longest_path = possible_longest_path;
+                neigbour.added_by_predecessor = (*itr).lenght;
                 //update the longest path in the whole graf
-                if(graf.longest_path < graf.all_nodes[(*itr).to].current_longest_path){
-                  graf.longest_path = graf.all_nodes[(*itr).to].current_longest_path;
-                  graf.longest_path_node_index = graf.all_nodes[(*itr).to].index;
+                if(graf.longest_path < neigbour.current_longest_path){
+                  graf.longest_path = neigbour.current_longest_path;
+                  graf.longest_path_node_index = neigbour.index;
                 }
-                graf.all_nodes[(*itr).to].predecessor = cur_node.index;
-                queue.push(graf.all_nodes[(*itr).to]);
+                neigbour.predecessor = cur_node.index;
+                queue.push(neigbour);
               }
           }          
         }
-    }
     //creating the path from the results of the bfs
     std::vector<Path> result;
     
     Node cur_node = graf.all_nodes[graf.longest_path_node_index];
     
     while(cur_node.predecessor != ROOT){
-      result.push_back(Path(cur_node.predecessor,cur_node.index,cur_node.added_by_predecessor));
+      result.emplace_back(Path(cur_node.predecessor,cur_node.index,cur_node.added_by_predecessor));
       cur_node = graf.all_nodes[cur_node.predecessor];
     }
     std::reverse(result.begin(),result.end());
