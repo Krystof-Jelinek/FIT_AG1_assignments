@@ -56,8 +56,9 @@ class Node{
   size_t current_longest_path;
   size_t added_by_predecessor;
   std::vector<Edge> neighbours;
+  bool opened;
 
-  Node(size_t i) : index(i), predecessor(ROOT), current_longest_path(0), added_by_predecessor(0) {}
+  Node(size_t i) : index(i), predecessor(ROOT), current_longest_path(0), added_by_predecessor(0), opened(false) {}
 
 };
 
@@ -95,16 +96,16 @@ std::vector<Path> longest_track(size_t points, const std::vector<Path>& all_path
     }
 
     //executing bfs algorithm on the graf
-    std::queue<Node> queue;
+    std::queue<Node*> queue;
 
     for(auto itr = graf.begin_nodes.begin(); itr!= graf.begin_nodes.end();itr++){
-        Node start =  graf.all_nodes[*itr];
+        Node & start =  graf.all_nodes[*itr];
 
-        queue.push(start);
+        queue.push(&start);
     }
 
         while(!queue.empty()){
-          Node cur_node = queue.front();
+          Node & cur_node = *(queue.front());
           queue.pop();
 
           for(auto itr = cur_node.neighbours.begin(); itr != cur_node.neighbours.end(); itr++){
@@ -120,9 +121,14 @@ std::vector<Path> longest_track(size_t points, const std::vector<Path>& all_path
                   graf.longest_path_node_index = neigbour.index;
                 }
                 neigbour.predecessor = cur_node.index;
-                queue.push(neigbour);
+                if(neigbour.opened == false){
+                  neigbour.opened = true;
+                  queue.push(&neigbour);
+                }
               }
-          }          
+          }
+          cur_node.opened = false;
+                    
         }
     //creating the path from the results of the bfs
     std::vector<Path> result;
